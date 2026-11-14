@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Soundboard Pro - Igreja</title>
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+        
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .nav-btn {
+            background: none;
+            border: none;
+            color: #38bdf8;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+        }
+        
+        .playlist-info { text-align: center; flex-grow: 1; }
+        .playlist-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+        .playlist-name { font-size: 16px; font-weight: bold; color: #38bdf8; margin-top: 3px; }
+        
+        .add-playlist-btn {
+            background: #38bdf8;
+            border: none;
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        .categories {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding: 5px 0;
+        }
+        
+        .category-btn {
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+        
+        .category-btn.active {
+            background: #38bdf8;
+            border-color: #38bdf8;
+            color: white;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .pad {
+            aspect-ratio: 1;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.15s;
+            user-select: none;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .pad:active { transform: scale(0.93); }
+        .pad.playing { animation: pulse 1s infinite; border-color: #4ade80; }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(74, 222, 128, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(74, 222, 128, 0.6); }
+        }
+        
+        .pad.empty {
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+        }
+        
+        .pad.pad { background: linear-gradient(135deg, #4ade80, #16a34a); }
+        .pad.ambient { background: linear-gradient(135deg, #60a5fa, #2563eb); }
+        .pad.transition { background: linear-gradient(135deg, #c084fc, #9333ea); }
+        .pad.message { background: linear-gradient(135deg, #fb923c, #ea580c); }
+        .pad.celebration { background: linear-gradient(135deg, #f87171, #dc2626); }
+        
+        .pad-icon { font-size: 28px; margin-bottom: 6px; }
+        .pad-label { font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; padding: 0 4px; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pad-loop { position: absolute; top: 5px; right: 5px; font-size: 10px; background: rgba(0, 0, 0, 0.5); padding: 2px 5px; border-radius: 8px; }
+        .edit-indicator { position: absolute; top: 5px; left: 5px; background: rgba(0, 0, 0, 0.5); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; opacity: 0; transition: opacity 0.3s; }
+        .pad:hover .edit-indicator { opacity: 1; }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .control-btn {
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-record { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .btn-import { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .btn-dark { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-settings { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        
+        .instructions {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            font-size: 10px;
+            color: #64748b;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            padding: 20px;
+        }
+        
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #0a0e27;
+            padding: 20px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 360px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-title { font-size: 18px; margin-bottom: 15px; color: #38bdf8; text-align: center; }
+        
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 13px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .modal-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn-save { background: #4ade80; color: white; }
+        .btn-cancel { background: #64748b; color: white; }
+        .btn-delete { background: #ef4444; color: white; }
+        
+        .hidden-input { display: none; }
+        
+        body.dark-mode { background: #000000; }
+        body.dark-mode .header,
+        body.dark-mode .categories,
+        body.dark-mode .controls,
+        body.dark-mode .instructions {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.03);
+        }
+        
+        .slot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .slot-btn {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .slot-btn.filled {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+        }
+        
+        .slot-btn small {
+            font-size: 9px;
+            color: #94a3b8;
+            font-weight: normal;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4ade80;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .toast.show { opacity: 1; }
+        .toast.error { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <button class="nav-btn" onclick="previousPlaylist()">⬅️</button>
+            <div class="playlist-info">
+                <div class="playlist-label">Playlist Atual</div>
+                <div class="playlist-name" id="playlistName">Adoração</div>
+            </div>
+            <button class="add-playlist-btn" onclick="addPlaylist()">+</button>
+        </div>
+        
+        <div class="categories">
+            <button class="category-btn active" data-category="pad">🎹 Pad</button>
+            <button class="category-btn" data-category="ambient">🌊 Ambient</button>
+            <button class="category-btn" data-category="transition">🔔 Transição</button>
+            <button class="category-btn" data-category="message">📖 Mensagem</button>
+            <button class="category-btn" data-category="celebration">🎉 Celebração</button>
+        </div>
+        
+        <div class="grid" id="padGrid"></div>
+        
+        <div class="controls">
+            <button class="control-btn btn-record" onclick="openRecordModal()">🎙️ Gravar</button>
+            <button class="control-btn btn-import" onclick="openImportSelector()">📂 Importar</button>
+            <button class="control-btn btn-dark" onclick="toggleDarkMode()">🌙 Escuro</button>
+            <button class="control-btn btn-settings" onclick="openSettings()">⚙️ Config</button>
+        </div>
+        
+        <input type="file" id="fileInput" class="hidden-input" accept="audio/*" onchange="handleFileImport(event)">
+        
+        <div class="instructions">💡 Toque: Tocar | Toque longo: Editar</div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+    
+    <!-- Modal de Seleção de Slot -->
+    <div class="modal" id="importSelectorModal">
+        <div class="modal-content">
+            <h2 class="modal-title">📂 Escolha onde salvar</h2>
+            <p style="text-align: center; color: #94a3b8; font-size: 12px; margin-bottom: 10px;">Selecione um botão</p>
+            <div class="slot-grid" id="slotGrid"></div>
+            <div class="modal-actions">
+                <button class="modal-btn btn-cancel" onclick="closeImportSelector()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Gravação -->
+    <div class="modal" id="recordModal">
+        <div class="modal-content">
+            <h2 class="modal-title">🎙️ Gravar Som</h2>
+            <button id="recordBtn" onclick="toggleRecording()" style="width: 80px; height: 80px; border-radius: 50%; background: #ef4444; border: none; color: white; font-size: 32px; cursor: pointer; margin: 15px auto; display: flex; align-items: center; justify-content: center;">🎤</button>
+            <p id="recordStatus" style="text-align: center; color: #94a3b8; font-size: 13px;">Pronto para gravar</p>
+            <div class="modal-actions">
+                <button class="modal-btn btn-cancel" onclick="closeRecordModal()">Cancelar</button>
+                <button class="modal-btn btn-save" onclick="saveRecording()" id="saveBtn" disabled>Salvar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Edição -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <h2 class="modal-title">✏️ Editar Botão</h2>
+            <p id="editPadName" style="margin-bottom: 15px; color: #94a3b8; font-size: 13px; text-align: center;"></p>
+            
+            <div class="form-group">
+                <label class="form-label">Nome</label>
+                <input type="text" class="form-input" id="editName" placeholder="Nome do som">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Categoria</label>
+                <select class="form-select" id="editCategory">
+                    <option value="pad">🎹 Pad</option>
+                    <option value="ambient">🌊 Ambient</option>
+                    <option value="transition">🔔 Transição</option>
+                    <option value="message">📖 Mensagem</option>
+                    <option value="celebration">🎉 Celebração</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Tom (Semitons): <span id="pitchValue">0 st</span></label>
+                <input type="range" class="form-input" id="editPitch" min="-12" max="12" value="0" oninput="document.getElementById('pitchValue').textContent = this.value + ' st'">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Opções</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="editLoop"> Loop
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="editFadeIn"> Fade In
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="editFadeOut"> Fade Out
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Timer (segundos, 0 = infinito)</label>
+                <input type="number" class="form-input" id="editTimer" min="0" value="0" placeholder="0">
+            </div>
+            
+            <div class="modal-actions" style="flex-direction: column;">
+                <button class="modal-btn" style="background: #ef4444; color: white;" onclick="openRecordFromEdit()">🎙️ Gravar Novo</button>
+                <button class="modal-btn" style="background: #3b82f6; color: white;" onclick="document.getElementById('editFileInput').click()">📂 Trocar Áudio</button>
+                <button class="modal-btn btn-save" onclick="saveEdit()">💾 Salvar</button>
+                <button class="modal-btn btn-delete" onclick="clearPad()">🗑️ Limpar</button>
+                <button class="modal-btn btn-cancel" onclick="closeEditModal()">Fechar</button>
+            </div>
+        </div>
+        <input type="file" id="editFileInput" class="hidden-input" accept="audio/*" onchange="handleEditFileImport(event)">
+    </div>
+    
+    <script>
+        // ============ INDEXEDDB PARA ÁUDIOS ============
+        let db;
+        const DB_NAME = 'SoundboardDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'audios';
+        
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                request.onsuccess = (e) => {
+                    db = e.target.result;
+                    resolve(db);
+                };
+                request.onerror = (e) => reject(e);
+            });
+        }
+        
+        function saveAudioToDB(key, blob) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put(blob, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e);
+            });
+        }
+        
+        function getAudioFromDB(key) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (e) => reject(e);
+            });
+        }
+        
+        function deleteAudioFromDB(key) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.delete(key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e);
+            });
+        }
+        
+        function getAudioURL(key) {
+            return new Promise(async (resolve) => {
+                const blob = await getAudioFromDB(key);
+                if (blob) {
+                    resolve(URL.createObjectURL(blob));
+                } else {
+                    resolve(null);
+                }
+            });
+        }
+        
+        // ============ VARIÁVEIS GLOBAIS ============
+        let currentPlaylistIndex = 0;
+        let selectedPadIndex = null;
+        let pendingImportIndex = null;
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordedBlob = null;
+        let audioContext = null;
+        let activeAudios = {};
+        let darkMode = false;
+        let audioCache = {}; // Cache de URLs
+        
+        let playlists = JSON.parse(localStorage.getItem('soundboard_playlists')) || [
+            { name: 'Adoração', pads: Array(9).fill(null) },
+            { name: 'Louvor', pads: Array(9).fill(null) },
+            { name: 'Transições', pads: Array(9).fill(null) }
+        ];
+        
+        // ============ INICIALIZAÇÃO ============
+        async function init() {
+            await openDB();
+            renderGrid();
+            updatePlaylistName();
+            setupCategoryButtons();
+        }
+        
+        function setupCategoryButtons() {
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderGrid();
+                };
+            });
+        }
+        
+        async function renderGrid() {
+            const grid = document.getElementById('padGrid');
+            grid.innerHTML = '';
+            const currentPlaylist = playlists[currentPlaylistIndex];
+            
+            for (let index = 0; index < currentPlaylist.pads.length; index++) {
+                const pad = currentPlaylist.pads[index];
+                const padElement = document.createElement('div');
+                padElement.className = `pad ${pad ? pad.category : 'empty'} ${pad ? 'filled' : ''}`;
+                padElement.dataset.index = index;
+                
+                if (pad) {
+                    const isPlaying = activeAudios[index] !== undefined;
+                    if (isPlaying) padElement.classList.add('playing');
+                    
+                    padElement.innerHTML = `
+                        <div class="edit-indicator">✎</div>
+                        <div class="pad-icon">${getCategoryIcon(pad.category)}</div>
+                        <div class="pad-label">${pad.name}</div>
+                        ${pad.loop ? '<div class="pad-loop">🔄</div>' : ''}
+                    `;
+                    padElement.onclick = () => toggleSound(index);
+                    setupLongPress(padElement, index);
+                } else {
+                    padElement.innerHTML = `<div class="pad-icon" style="opacity: 0.3;">➕</div><div class="pad-label" style="opacity: 0.5;">Vazio</div>`;
+                    padElement.onclick = () => openEditModal(index);
+                }
+                grid.appendChild(padElement);
+            }
+        }
+        
+        function getCategoryIcon(category) {
+            const icons = { pad: '🎹', ambient: '🌊', transition: '🔔', message: '📖', celebration: '🎉' };
+            return icons[category] || '🔊';
+        }
+        
+        function setupLongPress(element, index) {
+            let timer;
+            const start = () => { timer = setTimeout(() => openEditModal(index), 600); };
+            const end = () => clearTimeout(timer);
+            element.addEventListener('mousedown', start);
+            element.addEventListener('mouseup', end);
+            element.addEventListener('mouseleave', end);
+            element.addEventListener('touchstart', start, {passive: true});
+            element.addEventListener('touchend', end);
+        }
+        
+        async function toggleSound(index) {
+            const pad = playlists[currentPlaylistIndex].pads[index];
+            if (!pad || !pad.audioKey) return;
+            
+            if (activeAudios[index]) {
+                stopSound(index);
+            } else {
+                await playSound(index);
+            }
+        }
+        
+        async function playSound(index) {
+            const pad = playlists[currentPlaylistIndex].pads[index];
+            if (!pad || !pad.audioKey) return;
+            
+            try {
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') await audioContext.resume();
+                
+                // Buscar áudio do IndexedDB
+                const blob = await getAudioFromDB(pad.audioKey);
+                if (!blob) {
+                    showToast('❌ Áudio não encontrado!', true);
+                    return;
+                }
+                
+                const arrayBuffer = await blob.arrayBuffer();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                
+                if (pad.pitch && pad.pitch !== 0) {
+                    source.playbackRate.value = Math.pow(2, pad.pitch / 12);
+                }
+                
+                const gainNode = audioContext.createGain();
+                source.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                if (pad.fadeIn) {
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 1);
+                } else {
+                    gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+                }
+                
+                if (pad.fadeOut) {
+                    const duration = audioBuffer.duration / (pad.pitch ? Math.pow(2, pad.pitch / 12) : 1);
+                    const fadeOutStart = Math.max(0.1, duration - 2);
+                    gainNode.gain.setValueAtTime(1, audioContext.currentTime + fadeOutStart);
+                    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration);
+                }
+                
+                if (pad.loop) {
+                    source.loop = true;
+                }
+                
+                source.start(0);
+                activeAudios[index] = { source, gainNode };
+                renderGrid();
+                
+                if (pad.timer && pad.timer > 0) {
+                    setTimeout(() => stopSound(index), pad.timer * 1000);
+                }
+            } catch (err) {
+                console.error('Erro ao tocar:', err);
+                showToast('❌ Erro ao tocar áudio', true);
+            }
+        }
+        
+        function stopSound(index) {
+            if (activeAudios[index]) {
+                const { source, gainNode } = activeAudios[index];
+                try {
+                    if (source.loop) {
+                        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
+                        setTimeout(() => { try { source.stop(); } catch(e) {} }, 500);
+                    } else {
+                        source.stop();
+                    }
+                } catch(e) {}
+                delete activeAudios[index];
+                renderGrid();
+            }
+        }
+        
+        function previousPlaylist() {
+            if (currentPlaylistIndex > 0) {
+                currentPlaylistIndex--;
+                updatePlaylistName();
+                renderGrid();
+            }
+        }
+        
+        function addPlaylist() {
+            const name = prompt('Nome da nova playlist:');
+            if (name) {
+                playlists.push({ name, pads: Array(9).fill(null) });
+                currentPlaylistIndex = playlists.length - 1;
+                updatePlaylistName();
+                renderGrid();
+                savePlaylists();
+            }
+        }
+        
+        function updatePlaylistName() {
+            document.getElementById('playlistName').textContent = playlists[currentPlaylistIndex].name;
+        }
+        
+        function openImportSelector() {
+            const grid = document.getElementById('slotGrid');
+            grid.innerHTML = '';
+            const currentPlaylist = playlists[currentPlaylistIndex];
+            
+            currentPlaylist.pads.forEach((pad, index) => {
+                const btn = document.createElement('button');
+                btn.className = `slot-btn ${pad ? 'filled' : ''}`;
+                btn.innerHTML = `${index + 1}<small>${pad ? pad.name : 'Vazio'}</small>`;
+                btn.onclick = () => selectSlotForImport(index);
+                grid.appendChild(btn);
+            });
+            
+            document.getElementById('importSelectorModal').classList.add('active');
+        }
+        
+        function closeImportSelector() {
+            document.getElementById('importSelectorModal').classList.remove('active');
+            pendingImportIndex = null;
+        }
+        
+        function selectSlotForImport(index) {
+            pendingImportIndex = index;
+            closeImportSelector();
+            setTimeout(() => document.getElementById('fileInput').click(), 100);
+        }
+        
+        function openRecordModal() {
+            const firstEmpty = playlists[currentPlaylistIndex].pads.findIndex(p => p === null);
+            selectedPadIndex = firstEmpty !== -1 ? firstEmpty : 0;
+            document.getElementById('recordModal').classList.add('active');
+            resetRecordModal();
+        }
+        
+        function closeRecordModal() {
+            document.getElementById('recordModal').classList.remove('active');
+            if (isRecording) stopRecording();
+        }
+        
+        function resetRecordModal() {
+            isRecording = false;
+            audioChunks = [];
+            recordedBlob = null;
+            document.getElementById('recordBtn').textContent = '🎤';
+            document.getElementById('recordStatus').textContent = 'Pronto para gravar';
+            document.getElementById('saveBtn').disabled = true;
+        }
+        
+        async function toggleRecording() {
+            if (!isRecording) await startRecording();
+            else stopRecording();
+        }
+        
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    document.getElementById('saveBtn').disabled = false;
+                    document.getElementById('recordStatus').textContent = 'Gravação pronta!';
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('recordBtn').textContent = '⏹️';
+                document.getElementById('recordStatus').textContent = 'Gravando...';
+            } catch (err) {
+                showToast('❌ Erro no microfone', true);
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(t => t.stop());
+                isRecording = false;
+                document.getElementById('recordBtn').textContent = '🎤';
+            }
+        }
+        
+        async function saveRecording() {
+            if (recordedBlob && selectedPadIndex !== null) {
+                const name = prompt('Nome do som:', 'Som ' + (selectedPadIndex + 1));
+                if (name) {
+                    try {
+                        const audioKey = `audio_${Date.now()}_${selectedPadIndex}`;
+                        await saveAudioToDB(audioKey, recordedBlob);
+                        
+                        playlists[currentPlaylistIndex].pads[selectedPadIndex] = {
+                            name,
+                            audioKey,
+                            category: document.querySelector('.category-btn.active').dataset.category,
+                            loop: false,
+                            fadeIn: false,
+                            fadeOut: false,
+                            pitch: 0,
+                            timer: 0
+                        };
+                        renderGrid();
+                        savePlaylists();
+                        showToast('✅ Som gravado com sucesso!');
+                    } catch (err) {
+                        showToast('❌ Erro ao salvar', true);
+                    }
+                }
+            }
+            closeRecordModal();
+        }
+        
+        function openEditModal(index) {
+            selectedPadIndex = index;
+            const pad = playlists[currentPlaylistIndex].pads[index];
+            document.getElementById('editPadName').textContent = pad ? `Editando: ${pad.name}` : 'Novo Som (Botão ' + (index + 1) + ')';
+            document.getElementById('editName').value = pad ? pad.name : '';
+            document.getElementById('editCategory').value = pad ? pad.category : 'pad';
+            document.getElementById('editPitch').value = pad ? pad.pitch || 0 : 0;
+            document.getElementById('pitchValue').textContent = (pad ? pad.pitch || 0 : 0) + ' st';
+            document.getElementById('editLoop').checked = pad ? pad.loop || false : false;
+            document.getElementById('editFadeIn').checked = pad ? pad.fadeIn || false : false;
+            document.getElementById('editFadeOut').checked = pad ? pad.fadeOut || false : false;
+            document.getElementById('editTimer').value = pad ? pad.timer || 0 : 0;
+            document.getElementById('editModal').classList.add('active');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            selectedPadIndex = null;
+        }
+        
+        function openRecordFromEdit() {
+            closeEditModal();
+            openRecordModal();
+        }
+        
+        async function saveEdit() {
+            const pad = playlists[currentPlaylistIndex].pads[selectedPadIndex];
+            if (pad) {
+                pad.name = document.getElementById('editName').value || pad.name;
+                pad.category = document.getElementById('editCategory').value;
+                pad.pitch = parseInt(document.getElementById('editPitch').value);
+                pad.loop = document.getElementById('editLoop').checked;
+                pad.fadeIn = document.getElementById('editFadeIn').checked;
+                pad.fadeOut = document.getElementById('editFadeOut').checked;
+                pad.timer = parseInt(document.getElementById('editTimer').value) || 0;
+                renderGrid();
+                savePlaylists();
+                showToast('✅ Configurações salvas!');
+            }
+            closeEditModal();
+        }
+        
+        async function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const targetIndex = pendingImportIndex !== null ? pendingImportIndex : selectedPadIndex;
+            
+            if (targetIndex === null) {
+                showToast('❌ Selecione um botão', true);
+                return;
+            }
+            
+            const name = prompt('Nome do som:', file.name.replace(/\.[^/.]+$/, ""));
+            if (!name) return;
+            
+            try {
+                // Salvar blob no IndexedDB
+                const audioKey = `audio_${Date.now()}_${targetIndex}`;
+                await saveAudioToDB(audioKey, file);
+                
+                // Se já existia um áudio, deletar o antigo
+                const oldPad = playlists[currentPlaylistIndex].pads[targetIndex];
+                if (oldPad && oldPad.audioKey) {
+                    await deleteAudioFromDB(oldPad.audioKey);
+                }
+                
+                playlists[currentPlaylistIndex].pads[targetIndex] = {
+                    name,
+                    audioKey,
+                    category: document.querySelector('.category-btn.active').dataset.category,
+                    loop: false,
+                    fadeIn: false,
+                    fadeOut: false,
+                    pitch: 0,
+                    timer: 0
+                };
+                renderGrid();
+                savePlaylists();
+                showToast('✅ Áudio importado no botão ' + (targetIndex + 1) + '!');
+            } catch (err) {
+                console.error('Erro:', err);
+                showToast('❌ Erro ao importar', true);
+            }
+            
+            event.target.value = '';
+            pendingImportIndex = null;
+        }
+        
+        async function handleEditFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const pad = playlists[currentPlaylistIndex].pads[selectedPadIndex];
+            if (!pad) return;
+            
+            try {
+                // Deletar áudio antigo
+                if (pad.audioKey) {
+                    await deleteAudioFromDB(pad.audioKey);
+                }
+                
+                // Salvar novo
+                const audioKey = `audio_${Date.now()}_${selectedPadIndex}`;
+                await saveAudioToDB(audioKey, file);
+                pad.audioKey = audioKey;
+                
+                renderGrid();
+                savePlaylists();
+                showToast('✅ Áudio substituído!');
+            } catch (err) {
+                showToast('❌ Erro ao substituir', true);
+            }
+            
+            event.target.value = '';
+        }
+        
+        async function clearPad() {
+            if (confirm('Limpar este botão?')) {
+                const pad = playlists[currentPlaylistIndex].pads[selectedPadIndex];
+                if (pad && pad.audioKey) {
+                    await deleteAudioFromDB(pad.audioKey);
+                }
+                if (activeAudios[selectedPadIndex]) stopSound(selectedPadIndex);
+                playlists[currentPlaylistIndex].pads[selectedPadIndex] = null;
+                renderGrid();
+                savePlaylists();
+                showToast('🗑️ Botão limpo!');
+            }
+            closeEditModal();
+        }
+        
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            document.body.classList.toggle('dark-mode', darkMode);
+            localStorage.setItem('soundboard_darkmode', darkMode);
+        }
+        
+        function openSettings() {
+            const totalSounds = playlists.reduce((acc, p) => acc + p.pads.filter(pad => pad !== null).length, 0);
+            alert('⚙️ Configurações:\n\n• Modo Escuro: ' + (darkMode ? 'Ativado' : 'Desativado') + '\n• Playlists: ' + playlists.length + '\n• Sons salvos: ' + totalSounds + '\n\n💡 Toque longo em um botão para editar todas as opções.');
+        }
+        
+        function savePlaylists() {
+            localStorage.setItem('soundboard_playlists', JSON.stringify(playlists));
+        }
+        
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show' + (isError ? ' error' : '');
+            setTimeout(() => toast.className = 'toast', 2500);
+        }
+        
+        if (localStorage.getItem('soundboard_darkmode') === 'true') {
+            darkMode = true;
+            document.body.classList.add('dark-mode');
+        }
+        
+        init();
+        
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW:', e));
+        }
+    </script>
+</body>
+</html>
